@@ -86,6 +86,12 @@ int main(int argc, char *argv[]) {
 
     string command;
     while (true) {
+        if (permission == "1") {
+            printf(
+                "Please enter the command:\n<lookup <username>>\n<push <filename>>\n<remove <filename>>\n<deploy><log>\n");
+        } else {
+            printf("Please enter the command: <lookup <username>>\n");
+        }
         getline(cin, command);
 
         string action;
@@ -94,8 +100,6 @@ int main(int argc, char *argv[]) {
         iss >> action;
         iss >> param;
         if (permission == "1") {
-            printf(
-                "“Please enter the command:\n<lookup <username>>\n<push <filename>>\n<remove <filename>>\n<deploy><log>\n");
             if (action == "lookup" && param.empty()) {
                 if (permission == "1") {
                     printf("Username is not specified. Will lookup %s.\n", username.c_str());
@@ -120,7 +124,6 @@ int main(int argc, char *argv[]) {
                 command.append(" ").append(username);
             }
         } else {
-            printf("Please enter the command: <lookup <username>> \n");
             if (action == "lookup") {
                 if (param.empty()) {
                     printf("Error: Username is required. Please specify a username to lookup.\n");
@@ -152,8 +155,6 @@ int main(int argc, char *argv[]) {
                 } else if (response == "0") {
                     printf("Empty repository..\n");
                 } else {
-                    printf("The client received the response from the main server using TCP over port %d\n",
-                           CLIENT_TCP_PORT);
                     cout << response << endl;
                 }
             } else if (action == "push") {
@@ -163,6 +164,8 @@ int main(int argc, char *argv[]) {
                     string decision;
                     getline(cin, decision);
                     command = "decision " + decision;
+                    command = meta_data + " " + command;
+                    client = connect_to_main_server();
                     send_message(client, command);
                 } else {
                     printf("%s pushed successfully\n", param.c_str());

@@ -136,9 +136,17 @@ int main() {
         buffer[bytes_received] = '\0';
         string message(buffer);
         string response;
-        if (message.find(LOOKUP_PREFIX) == 0) {
+        string member_name;
+        string permission;
+        string prefix;
+        istringstream iss(message);
+        iss >> member_name;
+        iss >> permission;
+        iss >> prefix;
+        if (prefix == LOOKUP_PREFIX) {
+            string username;
+            iss >> username;
             printf("Server R has received a lookup request from the main server.\n");
-            string username = trim(message.substr(LOOKUP_PREFIX.size()));
             if (!username.empty()) {
                 vector<string> &target_files = user_file_map[username];
                 if (target_files.empty()) {
@@ -152,11 +160,8 @@ int main() {
                 }
             }
         } else {
-            string prefix;
             string filename;
             string username;
-            istringstream iss(message);
-            iss >> prefix;
             iss >> filename;
             iss >> username;
             username = trim(username);
@@ -187,24 +192,27 @@ int main() {
 
         sendto(udp_sock, response.c_str(), response.size(), 0, (struct sockaddr *) &client_addr, addr_len);
 
-        if (message.find(LOOKUP_PREFIX) == 0) {
+        if (prefix == LOOKUP_PREFIX) {
             printf("Server R has finished sending the response to the main server.\n");
-        } else if (message.find(PUSH_PREFIX)) {
+        } else if (prefix == PUSH_PREFIX) {
             if (response == "1") {
                 bytes_received = recvfrom(udp_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &client_addr,
                                           &addr_len);
                 buffer[bytes_received] = '\0';
                 string command(buffer);
-                string prefix;
                 string decision;
-                istringstream iss(command);
-                iss >> prefix;
-                iss >> decision;
+                istringstream decision_iss(command);
+                decision_iss >> member_name;
+                decision_iss >> permission;
+                decision_iss >> prefix;
+                decision_iss >> decision;
                 if (decision == "Y") {
                     printf("User requested overwrite; overwrite successful.\n");
                 } else if (decision == "N") {
                     printf("Overwrite denied\n");
                 }
+                response = "0";
+                sendto(udp_sock, response.c_str(), response.size(), 0, (struct sockaddr *) &client_addr, addr_len);
             } else {
                 printf("%s uploaded successfully.\n", FILENAME.c_str());
             }

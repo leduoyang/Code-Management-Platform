@@ -103,7 +103,7 @@ void *handle_client(void *arg) {
         printf("The main server has sent the response to the client.\n");
     } else if (prefix == "decision") {
         printf("The main server has received the overwrite confirmation response from %s using TCP over port %d\n",
-               username.c_str(),
+               member_name.c_str(),
                MAIN_SERVER_TCP_PORT);
         response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
         printf("The main server has sent the overwrite confirmation response to server R.");
@@ -115,16 +115,18 @@ void *handle_client(void *arg) {
         printf("The main server has sent the push request to server R.");
         response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
         printf("The main server has received the response from server R using UDP over %d\n", MAIN_SERVER_UDP_PORT);
-        if(response == "1") {
-            printf("The main server has received the response from server R using UDP over %d, asking for overwrite confirmation\n", MAIN_SERVER_UDP_PORT);
-            printf("The main server has sent the overwrite confirmation request to the client.");
+        if (response == "1") {
+            printf(
+                "The main server has received the response from server R using UDP over %d, asking for overwrite confirmation\n",
+                MAIN_SERVER_UDP_PORT);
+            printf("The main server has sent the overwrite confirmation request to the client.\n");
         } else {
             printf("The main server has sent the response to the client.");
         }
     } else if (prefix == "remove") {
         iss >> filename;
         iss >> username;
-        printf("The main server has received a remove request from member %s TCP over port %d\n.", username.c_str(),
+        printf("The main server has received a remove request from member %s TCP over port %d.\n", username.c_str(),
                MAIN_SERVER_TCP_PORT);
         response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
         printf("The main server has received confirmation of the remove request done by the server R.\n");
