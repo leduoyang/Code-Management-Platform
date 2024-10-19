@@ -1,21 +1,18 @@
 #include <iostream>
 #include <fstream>
-#include <cstdlib>      // for std::exit, std::atoi
-#include <cstring>      // for std::memset, std::strerror
-#include <unistd.h>     // for close, read, write
-#include <errno.h>      // for errno
-#include <netdb.h>      // for hostent, gethostbyname
-#include <vector>
 #include <sstream>
-#include <sys/types.h>  // for socket types
-#include <netinet/in.h> // for sockaddr_in
-#include <sys/socket.h> // for socket, connect, etc.
-#include <arpa/inet.h>  // for inet_ntoa, htons
-#include <sys/wait.h>   // for waitpid
+#include <cstring>
+#include <unistd.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <vector>
 
 using namespace std;
 
-#define HOST_NAME "127.0.0.1"
+#define LOCALHOST "127.0.0.1"
 #define SERVER_A_UDP_PORT 21910
 #define BUFFER_SIZE 1024
 
@@ -72,7 +69,7 @@ int main() {
     struct sockaddr_in serverA_addr;
     serverA_addr.sin_family = AF_INET;
     serverA_addr.sin_port = htons(SERVER_A_UDP_PORT);
-    serverA_addr.sin_addr.s_addr = inet_addr(HOST_NAME);;
+    serverA_addr.sin_addr.s_addr = inet_addr(LOCALHOST);;
 
     if (::bind(udp_sock, (struct sockaddr *) &serverA_addr, sizeof(serverA_addr)) < 0) {
         cerr << "Bind error\n";

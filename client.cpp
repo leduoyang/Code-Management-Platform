@@ -1,19 +1,16 @@
 #include <iostream>
-#include <cstdlib>      // for exit, atoi
-#include <cstring>      // for memset, strerror
-#include <unistd.h>     // for close, read, write
-#include <errno.h>      // for errno
-#include <netdb.h>      // for hostent, gethostbyname
+#include <cstring>
+#include <unistd.h>
+#include <netdb.h>
 #include <sstream>
-#include <sys/types.h>  // for socket types
-#include <netinet/in.h> // for sockaddr_in
-#include <sys/socket.h> // for socket, connect, etc.
-#include <arpa/inet.h>  // for inet_ntoa, htons
-#include <sys/wait.h>   // for waitpid
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 using namespace std;
 
-#define HOST_NAME "127.0.0.1"
+#define LOCALHOST "127.0.0.1"
 #define MAIN_SERVER_TCP_PORT 25910
 #define BUFFER_SIZE 1024
 
@@ -42,7 +39,7 @@ int connect_to_main_server() {
     }
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(MAIN_SERVER_TCP_PORT);
-    server_addr.sin_addr.s_addr = inet_addr(HOST_NAME);
+    server_addr.sin_addr.s_addr = inet_addr(LOCALHOST);
     if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
         cerr << "Connection to server failed\n";
         return -1;

@@ -1,20 +1,20 @@
 #include <iostream>
-#include <cstdlib>      // for exit, atoi
-#include <cstring>      // for memset, strerror
-#include <unistd.h>     // for close, read, write
-#include <errno.h>      // for errno
-#include <netdb.h>      // for hostent, gethostbyname
-#include <sys/types.h>  // for socket types
-#include <netinet/in.h> // for sockaddr_in
-#include <sys/socket.h> // for socket, connect, etc.
-#include <arpa/inet.h>  // for inet_ntoa, htons
-#include <sys/wait.h>   // for waitpid
+#include <cstdlib>
+#include <cstring>
+#include <unistd.h>
+#include <errno.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/wait.h>
 #include <pthread.h>
 #include <sstream>
 
 using namespace std;
 
-#define HOST_NAME "127.0.0.1"
+#define LOCALHOST "127.0.0.1"
 #define SERVER_A_UDP_PORT 21910
 #define SERVER_R_UDP_PORT 22910
 #define SERVER_D_UDP_PORT 23910
@@ -168,15 +168,15 @@ int main() {
     struct sockaddr_in serverA_addr;
     serverA_addr.sin_family = AF_INET;
     serverA_addr.sin_port = htons(SERVER_A_UDP_PORT);
-    serverA_addr.sin_addr.s_addr = inet_addr(HOST_NAME);
+    serverA_addr.sin_addr.s_addr = inet_addr(LOCALHOST);
     struct sockaddr_in serverD_addr;
     serverD_addr.sin_family = AF_INET;
     serverD_addr.sin_port = htons(SERVER_D_UDP_PORT);
-    serverD_addr.sin_addr.s_addr = inet_addr(HOST_NAME);
+    serverD_addr.sin_addr.s_addr = inet_addr(LOCALHOST);
     struct sockaddr_in serverR_addr;
     serverR_addr.sin_family = AF_INET;
     serverR_addr.sin_port = htons(SERVER_R_UDP_PORT);
-    serverR_addr.sin_addr.s_addr = inet_addr(HOST_NAME);
+    serverR_addr.sin_addr.s_addr = inet_addr(LOCALHOST);
     const int udp_sock_a = init_udp_socket();
     const int udp_sock_d = init_udp_socket();
     const int udp_sock_r = init_udp_socket();
@@ -186,7 +186,7 @@ int main() {
     struct sockaddr_in serverM_addr;
     serverM_addr.sin_family = AF_INET;
     serverM_addr.sin_port = htons(MAIN_SERVER_TCP_PORT);
-    serverM_addr.sin_addr.s_addr = inet_addr(HOST_NAME);
+    serverM_addr.sin_addr.s_addr = inet_addr(LOCALHOST);
     int tcp_sock = init_tcp_server((sockaddr *) &serverM_addr);
     if (listen(tcp_sock, 5) < 0) {
         cerr << "Listen error\n";
