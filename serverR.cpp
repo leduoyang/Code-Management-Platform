@@ -164,7 +164,7 @@ int main() {
             if (prefix == PUSH_PREFIX) {
                 printf("Server R has received a push request from the main server.\n");
                 vector<string> &target_list = user_file_map[username];
-                if (target_list.empty() || check_if_file_exist(target_list, filename)) {
+                if (target_list.empty() || !check_if_file_exist(target_list, filename)) {
                     update_repository(target_list, filename, username, REPOSITORY, 1);
                     response = "0";
                 } else {
