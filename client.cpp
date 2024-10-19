@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     while (true) {
         if (permission == "1") {
             printf(
-                "Please enter the command:\n<lookup <username>>\n<push <filename>>\n<remove <filename>>\n<deploy><log>\n");
+                "Please enter the command:\n<lookup <username>>\n<push <filename>>\n<remove <filename>>\n<deploy>\n<log>\n");
         } else {
             printf("Please enter the command: <lookup <username>>\n");
         }
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
         iss >> param;
         if (permission == "1") {
             if (action == "lookup") {
-                if(param.empty()) {
+                if (param.empty()) {
                     param = username;
                     printf("Username is not specified. Will lookup %s.\n", param.c_str());
                     command = action;
@@ -171,6 +171,15 @@ int main(int argc, char *argv[]) {
                     // todo
                 } else {
                     printf("The remove request was successful.\n");
+                }
+            } else if (action == "deploy") {
+                if (response == "1") {
+                    // todo
+                } else {
+                    printf(
+                        "The client received the response from the main server using TCP over port %s. The following files in his/her repository have been deployed.\n",
+                        username.c_str());
+                    cout << response << endl;
                 }
             }
         } else {

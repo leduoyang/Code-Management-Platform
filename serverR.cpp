@@ -124,9 +124,10 @@ int main() {
     const string LOOKUP_PREFIX = "lookup";
     const string PUSH_PREFIX = "push";
     const string REMOVE_PREFIX = "remove";
+    const string DEPLOY_PREFIX = "deploy";
     const string REPOSITORY = "./filenames.txt";
     const string CREDENTIALS = "./members.txt";
-    printf("Server R is up and running using UDP on port %d.", SERVER_R_UDP_PORT);
+    printf("Server R is up and running using UDP on port %d.\n", SERVER_R_UDP_PORT);
     unordered_map<string, vector<string> > user_file_map = read_files(REPOSITORY);
 
     int udp_sock;
@@ -161,10 +162,14 @@ int main() {
         iss >> member_name;
         iss >> permission;
         iss >> prefix;
-        if (prefix == LOOKUP_PREFIX) {
+        if (prefix == LOOKUP_PREFIX || prefix == DEPLOY_PREFIX) {
             string username;
             iss >> username;
-            printf("Server R has received a lookup request from the main server.\n");
+            if(prefix == LOOKUP_PREFIX) {
+                printf("Server R has received a lookup request from the main server.\n");
+            } else {
+                printf("Server R has received a deploy request from the main server.\n");
+            }
             if (!username.empty()) {
                 set<string> username_set = load_username(CREDENTIALS);
                 if (username_set.find(username) == username_set.end()) {
@@ -213,7 +218,10 @@ int main() {
 
         if (prefix == LOOKUP_PREFIX) {
             printf("Server R has finished sending the response to the main server.\n");
-        } else if (prefix == PUSH_PREFIX) {
+        }
+        else if (prefix == DEPLOY_PREFIX) {
+            printf("Server R has finished sending the response to the main server.\n");
+        }else if (prefix == PUSH_PREFIX) {
             if (response == "1") {
                 bytes_received = recvfrom(udp_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &client_addr,
                                           &addr_len);

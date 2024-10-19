@@ -61,7 +61,7 @@ bool check_credential(const vector<pair<string, string> > &credentials, const st
 }
 
 int main() {
-    printf("Server A is up and running using UDP on port %d.", SERVER_A_UDP_PORT);
+    printf("Server A is up and running using UDP on port %d.\n", SERVER_A_UDP_PORT);
     vector<pair<string, string> > credentials = read_credentials("./members.txt");
 
     int udp_sock;
