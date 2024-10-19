@@ -20,7 +20,7 @@ using namespace std;
 #define SERVER_R_UDP_PORT 22910
 #define BUFFER_SIZE 1024
 
-string trim(const string& str) {
+string trim(const string &str) {
     size_t first = str.find_first_not_of(' ');
     if (first == string::npos) return "";
     size_t last = str.find_last_not_of(' ');
@@ -62,7 +62,7 @@ bool check_if_file_exist(const vector<string> &file_list, string &target) {
 
 void update_repository(vector<string> &target_list, const string &filename, const string &username,
                        const string &repository, int action) {
-    if(action == 1) {
+    if (action == 1) {
         // push operation
         target_list.push_back(filename);
         ofstream file(repository, ios::app);
@@ -70,8 +70,8 @@ void update_repository(vector<string> &target_list, const string &filename, cons
         file.close();
     } else if (action == 0) {
         // remove operation
-        for(auto it = target_list.begin(); it != target_list.end();) {
-            if(*it == filename) {
+        for (auto it = target_list.begin(); it != target_list.end();) {
+            if (*it == filename) {
                 it = target_list.erase(it);
             } else {
                 it += 1;
@@ -80,22 +80,22 @@ void update_repository(vector<string> &target_list, const string &filename, cons
         ifstream file(repository);
         vector<string> lines;
         string line;
-        if(getline(file, line)) {
+        if (getline(file, line)) {
             lines.push_back(line);
         }
-        while(getline(file, line)) {
+        while (getline(file, line)) {
             istringstream iss(line);
             string curr_username;
             string curr_filename;
-            if(iss >> curr_username >> curr_filename) {
-                if(!(curr_filename != username) && !(curr_filename != filename) ) {
+            if (iss >> curr_username >> curr_filename) {
+                if (!(curr_filename != username) && !(curr_filename != filename)) {
                     lines.push_back(line);
                 }
             }
         }
         file.close();
         ofstream output_file(repository, ios::trunc);
-        for(const string &output_line : lines) {
+        for (const string &output_line: lines) {
             output_file << output_line << endl;
         }
         output_file.close();
@@ -140,7 +140,7 @@ int main() {
             printf("Server R has received a lookup request from the main server.\n");
             string username = trim(message.substr(LOOKUP_PREFIX.size()));
             if (!username.empty()) {
-                vector<string>& target_files = user_file_map[username];
+                vector<string> &target_files = user_file_map[username];
                 if (target_files.empty()) {
                     if (user_file_map.find(username) == user_file_map.end()) {
                         response = "-1";

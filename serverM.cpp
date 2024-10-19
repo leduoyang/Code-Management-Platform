@@ -85,7 +85,8 @@ void *handle_client(void *arg) {
         printf("Server M has sent authentication request to Server A\n");
         response = udp_send_request(data->udp_sock_a, &data->serverA_addr, message);
         printf("The main server has received the response from server A using UDP over %d\n", MAIN_SERVER_UDP_PORT);
-        printf("The main server has sent the response from server A to client using TCP over port %d.\n", MAIN_SERVER_TCP_PORT);
+        printf("The main server has sent the response from server A to client using TCP over port %d.\n",
+               MAIN_SERVER_TCP_PORT);
     }
     send(client_sock, response.c_str(), response.size(), 0);
     close(client_sock);

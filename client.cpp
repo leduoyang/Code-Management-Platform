@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
                         "Please enter the command: <lookup <username>> , <push <filename> > , <remove <filename> > , <deploy> , <log>.\n";
                 continue;
             }
-            if(action == "remove") {
+            if (action == "remove") {
                 printf("%s sent a remove request to the main server.", username.c_str());
             }
             command.append(" ").append(username);
