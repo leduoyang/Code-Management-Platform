@@ -131,7 +131,20 @@ void *handle_client(void *arg) {
         response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
         printf("The main server has received confirmation of the remove request done by the server R.\n");
     } else if (prefix == "deploy") {
-        response = udp_send_request(data->udp_sock_d, &data->serverD_addr, message);
+        printf("The main server has received a remove request from member %s TCP over port %d.\n", username.c_str(),
+               MAIN_SERVER_TCP_PORT);
+        printf("The main server has sent the lookup request to server R.\n");
+        string deploy_message = member_name.append(" ").append(permission).append(" ").append("deploy").append(" ").
+                append(member_name);
+        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, deploy_message);
+        printf("The main server received the lookup response from server R.");
+        if (response.empty() || response == "0") {
+            response = "1";
+        } else {
+            printf("The main server has sent the deploy request to server D.\n");
+            udp_send_request(data->udp_sock_d, &data->serverD_addr, message + " " + response);
+            printf("The user %s’s repository has been deployed at server D.\n", member_name.c_str());
+        }
     } else {
         int index = message.find(":");
         printf("Server M has received username %s and password ****.\n", message.substr(0, index).c_str());
