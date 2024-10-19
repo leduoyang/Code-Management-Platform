@@ -88,7 +88,7 @@ void update_repository(vector<string> &target_list, const string &filename, cons
             string curr_username;
             string curr_filename;
             if (iss >> curr_username >> curr_filename) {
-                if (!(curr_filename != username) && !(curr_filename != filename)) {
+                if (curr_username != username && curr_filename != filename) {
                     lines.push_back(line);
                 }
             }
