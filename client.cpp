@@ -113,10 +113,15 @@ int main(int argc, char *argv[]) {
                         "Please enter the command: <lookup <username>> , <push <filename> > , <remove <filename> > , <deploy> , <log>.\n";
                 continue;
             }
+            if(action == "remove") {
+                printf("%s sent a remove request to the main server.", username.c_str());
+            }
             command.append(" ").append(username);
         }
+
         client = connect_to_main_server();
         string response = send_message(client, command);
+
         if (action == "lookup") {
             printf("The client received the response from the main server using TCP over port %d\n",
                    MAIN_SERVER_TCP_PORT);
@@ -128,14 +133,21 @@ int main(int argc, char *argv[]) {
                 cout << response << endl;
             }
         } else if (action == "push") {
-            if(response == "1") {
-                printf("%s exists in %s’s repository, do you want to overwrite (Y/N)?\n", param.c_str(), username.c_str());
+            if (response == "1") {
+                printf("%s exists in %s’s repository, do you want to overwrite (Y/N)?\n", param.c_str(),
+                       username.c_str());
                 string decision;
                 getline(cin, decision);
                 command = "decision " + decision;
                 send_message(client, command);
             } else {
                 printf("%s pushed successfully\n", param.c_str());
+            }
+        } else if (action == "remove") {
+            if (response == "1") {
+                // todo
+            } else {
+                printf("The remove request was successful.\n");
             }
         }
     }

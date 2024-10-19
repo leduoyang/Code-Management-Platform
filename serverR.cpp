@@ -61,11 +61,45 @@ bool check_if_file_exist(const vector<string> &file_list, string &target) {
 }
 
 void update_repository(vector<string> &target_list, const string &filename, const string &username,
-                       const string &repository) {
-    target_list.push_back(filename);
-    ofstream file(repository, ios::app);
-    file << username << " " << filename << std::endl;
-    file.close();
+                       const string &repository, int action) {
+    if(action == 1) {
+        // push operation
+        target_list.push_back(filename);
+        ofstream file(repository, ios::app);
+        file << username << " " << filename << std::endl;
+        file.close();
+    } else if (action == 0) {
+        // remove operation
+        for(auto it = target_list.begin(); it != target_list.end();) {
+            if(*it == filename) {
+                it = target_list.erase(it);
+            } else {
+                it += 1;
+            }
+        }
+        ifstream file(repository);
+        vector<string> lines;
+        string line;
+        if(getline(file, line)) {
+            lines.push_back(line);
+        }
+        while(getline(file, line)) {
+            istringstream iss(line);
+            string curr_username;
+            string curr_filename;
+            if(iss >> curr_username >> curr_filename) {
+                if(!(curr_filename != username) && !(curr_filename != filename) ) {
+                    lines.push_back(line);
+                }
+            }
+        }
+        file.close();
+        ofstream output_file(repository, ios::trunc);
+        for(const string &output_line : lines) {
+            output_file << output_line << endl;
+        }
+        output_file.close();
+    }
 }
 
 int main() {
@@ -131,7 +165,7 @@ int main() {
                 printf("Server R has received a push request from the main server.\n");
                 vector<string> &target_list = user_file_map[username];
                 if (target_list.empty() || check_if_file_exist(target_list, filename)) {
-                    update_repository(target_list, filename, username, REPOSITORY);
+                    update_repository(target_list, filename, username, REPOSITORY, 1);
                     response = "0";
                 } else {
                     printf("%s exists in %s's repository; requesting overwrite confirmation.\n", filename.c_str(),
@@ -140,6 +174,14 @@ int main() {
                     response = "1";
                 }
             } else if (prefix == REMOVE_PREFIX) {
+                printf("Server R has received a remove request from the main server.\n");
+                vector<string> &target_list = user_file_map[username];
+                if (!target_list.empty() || check_if_file_exist(target_list, filename)) {
+                    update_repository(target_list, filename, username, REPOSITORY, 0);
+                    response = "0";
+                } else {
+                    response = "1";
+                }
             }
         }
 
