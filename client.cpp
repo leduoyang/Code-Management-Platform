@@ -106,8 +106,11 @@ int main(int argc, char *argv[]) {
                     printf("Username is not specified. Will lookup %s.\n", param.c_str());
                     command = action;
                     command.append(" ").append(param);
-                    printf("%s sent a lookup request to the main server.\n", username.c_str());
                 }
+                printf("%s sent a lookup request to the main server.\n", username.c_str());
+            }
+            if (action == "deploy") {
+                printf("%s sent a lookup request to the main server.\n", username.c_str());
             }
             if ((action == "push" || action == "remove")) {
                 if (param.empty()) {
@@ -163,8 +166,11 @@ int main(int argc, char *argv[]) {
                     command = meta_data + " " + command;
                     client = connect_to_main_server();
                     send_message(client, command);
-                } else {
+                } else if (response == "0") {
                     printf("%s pushed successfully\n", param.c_str());
+                }
+                else {
+                    printf("%s was not pushed successfully.\n", param.c_str());
                 }
             } else if (action == "remove") {
                 if (response == "1") {
@@ -177,8 +183,8 @@ int main(int argc, char *argv[]) {
                     // todo
                 } else {
                     printf(
-                        "The client received the response from the main server using TCP over port %s. The following files in his/her repository have been deployed.\n",
-                        username.c_str());
+                        "The client received the response from the main server using TCP over port %d. The following files in his/her repository have been deployed.\n",
+                        CLIENT_TCP_PORT);
                     cout << response << endl;
                 }
             }
