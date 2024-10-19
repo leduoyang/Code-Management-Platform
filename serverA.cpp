@@ -19,6 +19,21 @@ using namespace std;
 #define SERVER_A_UDP_PORT 21910
 #define BUFFER_SIZE 1024
 
+string encrypt_password(const string &password) {
+    string encrypted = password;
+    for (char &ch: encrypted) {
+        if (isalpha(ch)) {
+            if (isupper(ch)) {
+                ch = 'A' + (ch - 'A' + 3) % 26;
+            } else {
+                ch = 'a' + (ch - 'a' + 3) % 26;
+            }
+        } else if (isdigit(ch)) {
+            ch = '0' + (ch - '0' + 3) % 10;
+        }
+    }
+    return encrypted;
+}
 
 vector<pair<string, string> > read_credentials(const string &filename) {
     vector<pair<string, string> > credentials;
@@ -80,7 +95,7 @@ int main() {
         printf("Server A has received username %s and password ****.", username.c_str());
 
         string response;
-        if(username == "guest" && message == "guest:guest") {
+        if (username == "guest" && message == "guest:" + encrypt_password("guest")) {
             response = "0";
         } else if (check_credential(credentials, buffer)) {
             printf("Member %s has been authenticated", username.c_str());

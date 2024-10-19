@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <set>
 #include <cstdlib>      // for std::exit, std::atoi
 #include <cstring>      // for std::memset, std::strerror
 #include <unistd.h>     // for close, read, write
@@ -19,6 +20,22 @@ using namespace std;
 #define HOST_NAME "127.0.0.1"
 #define SERVER_R_UDP_PORT 22910
 #define BUFFER_SIZE 1024
+
+set<string> load_username(const string &filename) {
+    set<string> username_set;
+    ifstream file(filename);
+    string line;
+    getline(file, line);
+    while (getline(file, line)) {
+        istringstream iss(line);
+        string username;
+        string password;
+        if (iss >> username >> password) {
+            username_set.insert(username);
+        }
+    }
+    return username_set;
+}
 
 string trim(const string &str) {
     size_t first = str.find_first_not_of(' ');
@@ -108,6 +125,7 @@ int main() {
     const string PUSH_PREFIX = "push";
     const string REMOVE_PREFIX = "remove";
     const string REPOSITORY = "./filenames.txt";
+    const string CREDENTIALS = "./members.txt";
     printf("Server R is up and running using UDP on port %d.", SERVER_R_UDP_PORT);
     unordered_map<string, vector<string> > user_file_map = read_files(REPOSITORY);
 
@@ -148,15 +166,16 @@ int main() {
             iss >> username;
             printf("Server R has received a lookup request from the main server.\n");
             if (!username.empty()) {
-                vector<string> &target_files = user_file_map[username];
-                if (target_files.empty()) {
-                    if (user_file_map.find(username) == user_file_map.end()) {
-                        response = "-1";
-                    } else {
-                        response = "0";
-                    }
+                set<string> username_set = load_username(CREDENTIALS);
+                if (username_set.find(username) == username_set.end()) {
+                    response = "-1";
                 } else {
-                    response = vector_to_string(target_files); // User exists and has files
+                    vector<string> &target_files = user_file_map[username];
+                    if (target_files.empty()) {
+                        response = "0";
+                    } else {
+                        response = vector_to_string(target_files); // User exists and has files
+                    }
                 }
             }
         } else {
@@ -175,9 +194,9 @@ int main() {
                 } else {
                     printf("%s exists in %s's repository; requesting overwrite confirmation.\n", filename.c_str(),
                            username.c_str());
-                    FILENAME = filename;
                     response = "1";
                 }
+                FILENAME = filename;
             } else if (prefix == REMOVE_PREFIX) {
                 printf("Server R has received a remove request from the main server.\n");
                 vector<string> &target_list = user_file_map[username];

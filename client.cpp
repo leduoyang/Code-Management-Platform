@@ -100,17 +100,13 @@ int main(int argc, char *argv[]) {
         iss >> action;
         iss >> param;
         if (permission == "1") {
-            if (action == "lookup" && param.empty()) {
-                if (permission == "1") {
-                    printf("Username is not specified. Will lookup %s.\n", username.c_str());
+            if (action == "lookup") {
+                if(param.empty()) {
+                    param = username;
+                    printf("Username is not specified. Will lookup %s.\n", param.c_str());
                     command = action;
-                    command.append(" ").append(username);
+                    command.append(" ").append(param);
                     printf("%s sent a lookup request to the main server.\n", username.c_str());
-                } else {
-                    printf("Error: Username is required. Please specify a username to lookup");
-                    cout <<
-                            "Please enter the command: <lookup <username>> , <push <filename> > , <remove <filename> > , <deploy> , <log>.\n";
-                    continue;
                 }
             }
             if ((action == "push" || action == "remove")) {
@@ -151,7 +147,7 @@ int main(int argc, char *argv[]) {
                 printf("The client received the response from the main server using TCP over port %d\n",
                        CLIENT_TCP_PORT);
                 if (response.empty() || response == "-1") {
-                    printf("%s does not exist. Please try again.\n", username.c_str());
+                    printf("%s does not exist. Please try again.\n", param.c_str());
                 } else if (response == "0") {
                     printf("Empty repository..\n");
                 } else {
