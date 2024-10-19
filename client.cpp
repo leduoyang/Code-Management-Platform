@@ -62,7 +62,7 @@ string send_message(int sock, const string &message) {
 
 int main(int argc, char *argv[]) {
     // 0 for guest, 1 for member
-    int permission = 0;
+    string permission = "0";
 
     // initiate credentials
     const string username = argv[1];
@@ -71,18 +71,18 @@ int main(int argc, char *argv[]) {
     const string credentials = username + ":" + encrypted_password;
 
     int client = connect_to_main_server();
-    cout << "The client is up and running." << endl;
+    printf("The client is up and running.");
     string res = send_message(client, credentials);
     if (res == "0") {
         cout << "You have been granted guest access." << endl;
     } else if (res == "1") {
         cout << "You have been granted member access" << endl;
-        permission = 1;
+        permission = "1";
     } else {
         cout << "The credentials are incorrect. Please try again." << endl;
         return 0;
     }
-    // check if login success
+    string meta_data = username + " " + permission;
 
     string command;
     while (true) {
@@ -93,61 +93,100 @@ int main(int argc, char *argv[]) {
         istringstream iss(command);
         iss >> action;
         iss >> param;
-        if (action == "lookup" && param.empty()) {
-            if (permission == 1) {
-                printf("Username is not specified. Will lookup %s.\n", username.c_str());
-                command = action;
+        if (permission == "1") {
+            printf(
+                "“Please enter the command:\n<lookup <username>>\n<push <filename>>\n<remove <filename>>\n<deploy><log>\n");
+            if (action == "lookup" && param.empty()) {
+                if (permission == "1") {
+                    printf("Username is not specified. Will lookup %s.\n", username.c_str());
+                    command = action;
+                    command.append(" ").append(username);
+                    printf("%s sent a lookup request to the main server.\n", username.c_str());
+                } else {
+                    printf("Error: Username is required. Please specify a username to lookup");
+                    cout <<
+                            "Please enter the command: <lookup <username>> , <push <filename> > , <remove <filename> > , <deploy> , <log>.\n";
+                    continue;
+                }
+            }
+            if ((action == "push" || action == "remove")) {
+                if (param.empty()) {
+                    printf("Error: Filename is required. Please specify a filename to push.\n");
+                    continue;
+                }
+                if (action == "remove") {
+                    printf("%s sent a remove request to the main server.", username.c_str());
+                }
                 command.append(" ").append(username);
-                printf("%s sent a lookup request to the main server.\n", username.c_str());
+            }
+        } else {
+            printf("Please enter the command: <lookup <username>> \n");
+            if (action == "lookup") {
+                if (param.empty()) {
+                    printf("Error: Username is required. Please specify a username to lookup.\n");
+                    continue;
+                }
             } else {
-                cout << "username is not specified." << endl;
-                cout <<
-                        "Please enter the command: <lookup <username>> , <push <filename> > , <remove <filename> > , <deploy> , <log>.\n";
+                printf("Guests can only use the lookup command\n");
                 continue;
             }
-        }
-        if ((action == "push" || action == "remove")) {
-            if (param.empty()) {
-                cout << "Error: Filename is required. Please specify a filename to push.\n" << endl;
-                cout <<
-                        "Please enter the command: <lookup <username>> , <push <filename> > , <remove <filename> > , <deploy> , <log>.\n";
-                continue;
-            }
-            if (action == "remove") {
-                printf("%s sent a remove request to the main server.", username.c_str());
-            }
-            command.append(" ").append(username);
+            printf("Guest sent a lookup request to the main server.");
         }
 
         client = connect_to_main_server();
+        struct sockaddr_in addr;
+        socklen_t addr_len = sizeof(addr);
+        if (getsockname(client, (struct sockaddr *) &addr, &addr_len) == -1) {
+            return -1;
+        }
+        const int CLIENT_TCP_PORT = ntohs(addr.sin_port);
+        command = meta_data + " " + command;
         string response = send_message(client, command);
 
-        if (action == "lookup") {
-            printf("The client received the response from the main server using TCP over port %d\n",
-                   MAIN_SERVER_TCP_PORT);
+        if (permission == "1") {
+            if (action == "lookup") {
+                printf("The client received the response from the main server using TCP over port %d\n",
+                       CLIENT_TCP_PORT);
+                if (response.empty() || response == "-1") {
+                    printf("%s does not exist. Please try again.\n", username.c_str());
+                } else if (response == "0") {
+                    printf("Empty repository..\n");
+                } else {
+                    printf("The client received the response from the main server using TCP over port %d\n",
+                           CLIENT_TCP_PORT);
+                    cout << response << endl;
+                }
+            } else if (action == "push") {
+                if (response == "1") {
+                    printf("%s exists in %s’s repository, do you want to overwrite (Y/N)?\n", param.c_str(),
+                           username.c_str());
+                    string decision;
+                    getline(cin, decision);
+                    command = "decision " + decision;
+                    send_message(client, command);
+                } else {
+                    printf("%s pushed successfully\n", param.c_str());
+                }
+            } else if (action == "remove") {
+                if (response == "1") {
+                    // todo
+                } else {
+                    printf("The remove request was successful.\n");
+                }
+            }
+        } else {
             if (response.empty() || response == "-1") {
-                printf("%s does not exist. Please try again.\n", username.c_str());
+                printf(
+                    "The client received the response from the main server using TCP over port %d. %s does not exist. Please try again.\n",
+                    CLIENT_TCP_PORT, username.c_str());
             } else if (response == "0") {
-                printf("Empty repository..\n");
+                printf(
+                    "The client received the response from the main server using TCP over port %d. Empty repository. \n",
+                    CLIENT_TCP_PORT);
             } else {
+                printf("The client received the response from the main server using TCP over port %d\n",
+                       CLIENT_TCP_PORT);
                 cout << response << endl;
-            }
-        } else if (action == "push") {
-            if (response == "1") {
-                printf("%s exists in %s’s repository, do you want to overwrite (Y/N)?\n", param.c_str(),
-                       username.c_str());
-                string decision;
-                getline(cin, decision);
-                command = "decision " + decision;
-                send_message(client, command);
-            } else {
-                printf("%s pushed successfully\n", param.c_str());
-            }
-        } else if (action == "remove") {
-            if (response == "1") {
-                // todo
-            } else {
-                printf("The remove request was successful.\n");
             }
         }
     }

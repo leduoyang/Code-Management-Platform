@@ -10,6 +10,7 @@
 #include <arpa/inet.h>  // for inet_ntoa, htons
 #include <sys/wait.h>   // for waitpid
 #include <pthread.h>
+#include <sstream>
 
 using namespace std;
 
@@ -72,12 +73,62 @@ void *handle_client(void *arg) {
     }
     buffer[bytes_received] = '\0';
     string message = buffer;
-    cout << "Received from Client: " << message << endl;
     string response;
-    if (message.find("lookup ") == 0 || message.find("push ") == 0 || message.find("decision ") == 0) {
-        cout << message << endl;
+    string member_name;
+    string permission;
+    string prefix;
+    string filename;
+    string username;
+    istringstream iss(message);
+    iss >> member_name;
+    iss >> permission;
+    iss >> prefix;
+    if (prefix == "lookup") {
+        iss >> username;
+        if (permission == "1") {
+            printf(
+                "The main server has received a lookup request from %s to lookup %s’s repository using TCP over port %d\n",
+                member_name.c_str(),
+                username.c_str(),
+                MAIN_SERVER_TCP_PORT);
+        } else {
+            printf(
+                "The main server has received a lookup request from Guest to lookup %s’s repository using TCP over port %d.\n",
+                username.c_str(),
+                MAIN_SERVER_TCP_PORT);
+        }
+        printf("The main server has sent the lookup request to server R.\n");
         response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
-    } else if (message == "deploy") {
+        printf("The main server has received the response from server R using UDP over %d\n", MAIN_SERVER_UDP_PORT);
+        printf("The main server has sent the response to the client.\n");
+    } else if (prefix == "decision") {
+        printf("The main server has received the overwrite confirmation response from %s using TCP over port %d\n",
+               username.c_str(),
+               MAIN_SERVER_TCP_PORT);
+        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
+        printf("The main server has sent the overwrite confirmation response to server R.");
+    } else if (prefix == "push") {
+        iss >> filename;
+        iss >> username;
+        printf("The main server has received a push request from %s TCP over port %d\n.", username.c_str(),
+               MAIN_SERVER_TCP_PORT);
+        printf("The main server has sent the push request to server R.");
+        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
+        printf("The main server has received the response from server R using UDP over %d\n", MAIN_SERVER_UDP_PORT);
+        if(response == "1") {
+            printf("The main server has received the response from server R using UDP over %d, asking for overwrite confirmation\n", MAIN_SERVER_UDP_PORT);
+            printf("The main server has sent the overwrite confirmation request to the client.");
+        } else {
+            printf("The main server has sent the response to the client.");
+        }
+    } else if (prefix == "remove") {
+        iss >> filename;
+        iss >> username;
+        printf("The main server has received a remove request from member %s TCP over port %d\n.", username.c_str(),
+               MAIN_SERVER_TCP_PORT);
+        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
+        printf("The main server has received confirmation of the remove request done by the server R.\n");
+    } else if (prefix == "deploy") {
         response = udp_send_request(data->udp_sock_d, &data->serverD_addr, message);
     } else {
         int index = message.find(":");
