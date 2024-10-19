@@ -20,6 +20,12 @@ using namespace std;
 #define SERVER_R_UDP_PORT 22910
 #define BUFFER_SIZE 1024
 
+string trim(const string& str) {
+    size_t first = str.find_first_not_of(' ');
+    if (first == string::npos) return "";
+    size_t last = str.find_last_not_of(' ');
+    return str.substr(first, (last - first + 1));
+}
 
 string vector_to_string(vector<string> vector) {
     ostringstream oss;
@@ -98,7 +104,7 @@ int main() {
         string response;
         if (message.find(LOOKUP_PREFIX) == 0) {
             printf("Server R has received a lookup request from the main server.\n");
-            string username = message.substr(LOOKUP_PREFIX.size());
+            string username = trim(message.substr(LOOKUP_PREFIX.size()));
             if (!username.empty()) {
                 vector<string>& target_files = user_file_map[username];
                 if (target_files.empty()) {
@@ -119,6 +125,8 @@ int main() {
             iss >> prefix;
             iss >> filename;
             iss >> username;
+            username = trim(username);
+            filename = trim(filename);
             if (prefix == PUSH_PREFIX) {
                 printf("Server R has received a push request from the main server.\n");
                 vector<string> &target_list = user_file_map[username];
