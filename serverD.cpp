@@ -12,29 +12,52 @@
 
 using namespace std;
 
+#define BUFFER_SIZE 1024
+#define DEPLOY_PREFIX "deploy"
+#define DEPLOY_SUCCESS_RESPONSE "0"
 #define LOCALHOST "127.0.0.1"
 #define SERVER_D_UDP_PORT 23910
-#define BUFFER_SIZE 1024
 
-void build_deploy_if_absent(const string &path) {
-    if (!std::filesystem::exists(path)) {
-        ofstream file(path);
+void update_deploy(const string &line) {
+    const string DEPLOYED = "./deployed.txt";
+    // build_deploy_if_absent
+    if (!std::filesystem::exists(DEPLOYED)) {
+        ofstream file(DEPLOYED);
         file.close();
     }
-}
-
-void update_deploy(const string &line, const string &deploy) {
-    ofstream file(deploy, ios::app);
+    // update the deploy information to the target file "./deployed.txt"
+    ofstream file(DEPLOYED, ios::app);
     file << line << std::endl;
     file.close();
 }
 
-int main() {
-    string FILENAME;
-    const string DEPLOY_PREFIX = "deploy";
-    const string DEPLOYED = "./deployed.txt";
-    printf("Server D is up and running using UDP on port %d.\n", SERVER_D_UDP_PORT);
+string process_request(string &message) {
+    string response;
+    string member_name;
+    string permission;
+    string prefix;
+    string filename;
+    istringstream iss(message);
+    iss >> member_name;
+    iss >> permission;
+    iss >> prefix;
+    string deploy_line = member_name.append(" ");
+    if (prefix == DEPLOY_PREFIX) {
+        // read filenames from the request message, acquired from serverM
+        while (getline(iss, filename)) {
+            // combine the filenames with spaces
+            deploy_line.append(filename).append(" ");
+        }
+        // update ./deployed.txt with the information in the message
+        update_deploy(deploy_line);
+        printf("Server D has deployed the user %s’s repository.\n", member_name.c_str());
+    }
+    return DEPLOY_SUCCESS_RESPONSE;
+}
 
+int main() {
+    // define and setup UDP server
+    printf("Server D is up and running using UDP on port %d.\n", SERVER_D_UDP_PORT);
     int udp_sock;
     if ((udp_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         return -1;
@@ -47,39 +70,23 @@ int main() {
         return -1;
     }
 
+    // define the client socket variable
     struct sockaddr_in client_addr;
     socklen_t addr_len = sizeof(client_addr);
     while (true) {
+        // read request from the client
         char buffer[BUFFER_SIZE];
         int bytes_received = recvfrom(udp_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &client_addr, &addr_len);
         printf("Server D has received a deploy request from the main server.\n");
         if (bytes_received < 0) {
-            cerr << "Receive error\n";
             continue;
         }
         buffer[bytes_received] = '\0';
         string message(buffer);
-        string response;
-        string member_name;
-        string permission;
-        string prefix;
-        string filename;
-        istringstream iss(message);
-        iss >> member_name;
-        iss >> permission;
-        iss >> prefix;
-        string deploy_line = member_name.append(" ");
-        if (prefix == DEPLOY_PREFIX) {
-            build_deploy_if_absent(DEPLOYED);
-            while (getline(iss, filename)) {
-                deploy_line.append(filename).append(" ");
-            }
-            update_deploy(deploy_line, DEPLOYED);
-        }
-        printf("Server D has deployed the user %s’s repository.\n", member_name.c_str());
-        response = '0';
+        // process the request and deploy the files based on the username provided
+        string response = process_request(message);
+        // send back the response to the client
         sendto(udp_sock, response.c_str(), response.size(), 0, (struct sockaddr *) &client_addr, addr_len);
     }
-
     return 0;
 }

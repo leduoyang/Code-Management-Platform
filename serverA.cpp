@@ -12,12 +12,12 @@
 
 using namespace std;
 
-#define LOCALHOST "127.0.0.1"
-#define SERVER_A_UDP_PORT 21910
 #define BUFFER_SIZE 1024
-#define MEMBER_RESPONSE "1"
-#define GUEST_RESPONSE "0"
 #define EXCEPTION_RESPONSE "-1"
+#define GUEST_RESPONSE "0"
+#define LOCALHOST "127.0.0.1"
+#define MEMBER_RESPONSE "1"
+#define SERVER_A_UDP_PORT 21910
 
 string encrypt_password(const string &password) {
     string encrypted = password;
@@ -80,9 +80,8 @@ string process_request(const string &username, const string &message) {
 }
 
 int main() {
-    printf("Server A is up and running using UDP on port %d.\n", SERVER_A_UDP_PORT);
-
     // define and setup UDP server
+    printf("Server A is up and running using UDP on port %d.\n", SERVER_A_UDP_PORT);
     int udp_sock;
     if ((udp_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         cerr << "UDP socket creation error\n";
@@ -93,7 +92,6 @@ int main() {
     serverA_addr.sin_port = htons(SERVER_A_UDP_PORT);
     serverA_addr.sin_addr.s_addr = inet_addr(LOCALHOST);;
     if (::bind(udp_sock, (struct sockaddr *) &serverA_addr, sizeof(serverA_addr)) < 0) {
-        cerr << "Bind error\n";
         return -1;
     }
 
@@ -105,7 +103,6 @@ int main() {
         char buffer[BUFFER_SIZE];
         int bytes_received = recvfrom(udp_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &client_addr, &addr_len);
         if (bytes_received < 0) {
-            cerr << "Receive error\n";
             continue;
         }
         buffer[bytes_received] = '\0';
