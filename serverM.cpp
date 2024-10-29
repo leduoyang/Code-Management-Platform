@@ -70,7 +70,7 @@ string udp_send_request(int udp_sock, sockaddr_in *server_addr, string message) 
 }
 
 /* handle request based on the action */
-string authenticate(string &message) {
+string authenticate(ThreadData *data, string &message) {
     int index = message.find(":");
     printf("Server M has received username %s and password ****.\n", message.substr(0, index).c_str());
     printf("Server M has sent authentication request to Server A\n");
@@ -81,7 +81,7 @@ string authenticate(string &message) {
     return response;
 }
 
-string decision(string &member_name, string &message) {
+string decision(ThreadData *data, string &member_name, string &message) {
     printf("The main server has received the overwrite confirmation response from %s using TCP over port %d\n",
            member_name.c_str(),
            MAIN_SERVER_TCP_PORT);
@@ -90,7 +90,7 @@ string decision(string &member_name, string &message) {
     return response;
 }
 
-string deploy(string &member_name, string &username, string &permission, string &message) {
+string deploy(ThreadData *data, string &member_name, string &username, string &permission, string &message) {
     printf("The main server has received a remove request from member %s TCP over port %d.\n", username.c_str(),
            MAIN_SERVER_TCP_PORT);
     printf("The main server has sent the lookup request to server R.\n");
@@ -108,7 +108,7 @@ string deploy(string &member_name, string &username, string &permission, string 
     return response;
 }
 
-string lookup(string &member_name, string &username, string &permission, string &message) {
+string lookup(ThreadData *data, string &member_name, string &username, string &permission, string &message) {
     if (permission == "1") {
         printf(
             "The main server has received a lookup request from %s to lookup %s’s repository using TCP over port %d\n",
@@ -128,7 +128,7 @@ string lookup(string &member_name, string &username, string &permission, string 
     return response;
 }
 
-string push(string &username, string &message) {
+string push(ThreadData *data, string &username, string &message) {
     printf("The main server has received a push request from %s TCP over port %d\n.", username.c_str(),
            MAIN_SERVER_TCP_PORT);
     printf("The main server has sent the push request to server R.");
@@ -145,7 +145,7 @@ string push(string &username, string &message) {
     return response;
 }
 
-string remove(string &username, string &message) {
+string remove(ThreadData *data, string &username, string &message) {
     printf("The main server has received a remove request from member %s TCP over port %d.\n", username.c_str(),
            MAIN_SERVER_TCP_PORT);
     string response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
@@ -181,21 +181,21 @@ void *handle_client(void *arg) {
     // forward request to other UDP servers based on the action provided in the message
     if (prefix == LOOKUP_PREFIX) {
         iss >> username;
-        response = lookup(member_name, username, permission, message);
+        response = lookup(data, member_name, username, permission, message);
     } else if (prefix == DECISION_PREFIX) {
-        response = decision(member_name, message);
+        response = decision(data, member_name, message);
     } else if (prefix == PUSH_PREFIX) {
         iss >> filename;
         iss >> username;
-        response = push(username, message);
+        response = push(data, username, message);
     } else if (prefix == REMOVE_PREFIX) {
         iss >> filename;
         iss >> username;
-        response = remove(username, message);
+        response = remove(data, username, message);
     } else if (prefix == DEPLOY_PREFIX) {
-        response = deploy(member_name, username, permission, message);
+        response = deploy(data, member_name, username, permission, message);
     } else {
-        response = authenticate(message);
+        response = authenticate(data, message);
     }// sending back the response to the client
     send(client_sock, response.c_str(), response.size(), 0);
     // close client socket after the request has been fulfilled
