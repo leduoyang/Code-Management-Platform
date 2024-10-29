@@ -12,9 +12,14 @@
 using namespace std;
 
 #define BUFFER_SIZE 1024
+#define DECISION_PREFIX "decision"
+#define DEPLOY_PREFIX "deploy"
+#define LOCALHOST "127.0.0.1"
+#define LOOKUP_PREFIX "lookup"
 #define MAIN_SERVER_UDP_PORT 24910
 #define MAIN_SERVER_TCP_PORT 25910
-#define LOCALHOST "127.0.0.1"
+#define PUSH_PREFIX "push"
+#define REMOVE_PREFIX "remove"
 #define SERVER_A_UDP_PORT 21910
 #define SERVER_R_UDP_PORT 22910
 #define SERVER_D_UDP_PORT 23910
@@ -174,20 +179,20 @@ void *handle_client(void *arg) {
     iss >> permission;
     iss >> prefix;
     // forward request to other UDP servers based on the action provided in the message
-    if (prefix == "lookup") {
+    if (prefix == LOOKUP_PREFIX) {
         iss >> username;
         response = lookup(member_name, username, permission, message);
-    } else if (prefix == "decision") {
+    } else if (prefix == DECISION_PREFIX) {
         response = decision(member_name, message);
-    } else if (prefix == "push") {
+    } else if (prefix == PUSH_PREFIX) {
         iss >> filename;
         iss >> username;
         response = push(username, message);
-    } else if (prefix == "remove") {
+    } else if (prefix == REMOVE_PREFIX) {
         iss >> filename;
         iss >> username;
         response = remove(username, message);
-    } else if (prefix == "deploy") {
+    } else if (prefix == DEPLOY_PREFIX) {
         response = deploy(member_name, username, permission, message);
     } else {
         response = authenticate(message);
