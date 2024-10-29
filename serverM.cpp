@@ -1,27 +1,25 @@
 #include <iostream>
-#include <cstdlib>
 #include <cstring>
 #include <unistd.h>
-#include <errno.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <sys/wait.h>
 #include <pthread.h>
 #include <sstream>
 
 using namespace std;
 
+#define BUFFER_SIZE 1024
+#define MAIN_SERVER_UDP_PORT 24910
+#define MAIN_SERVER_TCP_PORT 25910
 #define LOCALHOST "127.0.0.1"
 #define SERVER_A_UDP_PORT 21910
 #define SERVER_R_UDP_PORT 22910
 #define SERVER_D_UDP_PORT 23910
-#define MAIN_SERVER_UDP_PORT 24910
-#define MAIN_SERVER_TCP_PORT 25910
-#define BUFFER_SIZE 1024
 
+// the data structure for each client request, which will be handled by threads
 struct ThreadData {
     int client_sock;
     sockaddr_in serverA_addr;
@@ -32,7 +30,18 @@ struct ThreadData {
     int udp_sock_r;
 };
 
+/* initiate and handle tcp and udp request */
+int init_udp_socket() {
+    // create a UDP socket
+    int udp_sock;
+    if ((udp_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        return -1;
+    }
+    return udp_sock;
+}
+
 int init_tcp_server(sockaddr *server_addr) {
+    // create a tcp server based on the info indicated in server_addr
     int tcp_sock;
     if ((tcp_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         return -1;
@@ -43,17 +52,11 @@ int init_tcp_server(sockaddr *server_addr) {
     return tcp_sock;
 }
 
-int init_udp_socket() {
-    int udp_sock;
-    if ((udp_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        return -1;
-    }
-    return udp_sock;
-}
-
 string udp_send_request(int udp_sock, sockaddr_in *server_addr, string message) {
+    // send request to a UDP server with the parameter of message
     sendto(udp_sock, message.c_str(), message.size(), 0, (struct sockaddr *) server_addr, sizeof(*server_addr));
     char buffer[BUFFER_SIZE];
+    // receive the response from the udp server
     int bytes_received = recvfrom(udp_sock, buffer, BUFFER_SIZE, 0, NULL, NULL);
     if (bytes_received > 0) {
         buffer[bytes_received] = '\0';
@@ -61,7 +64,93 @@ string udp_send_request(int udp_sock, sockaddr_in *server_addr, string message) 
     return buffer;
 }
 
+/* handle request based on the action */
+string authenticate(string &message) {
+    int index = message.find(":");
+    printf("Server M has received username %s and password ****.\n", message.substr(0, index).c_str());
+    printf("Server M has sent authentication request to Server A\n");
+    string response = udp_send_request(data->udp_sock_a, &data->serverA_addr, message);
+    printf("The main server has received the response from server A using UDP over %d\n", MAIN_SERVER_UDP_PORT);
+    printf("The main server has sent the response from server A to client using TCP over port %d.\n",
+           MAIN_SERVER_TCP_PORT);
+    return response;
+}
+
+string decision(string &member_name, string &message) {
+    printf("The main server has received the overwrite confirmation response from %s using TCP over port %d\n",
+           member_name.c_str(),
+           MAIN_SERVER_TCP_PORT);
+    string response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
+    printf("The main server has sent the overwrite confirmation response to server R.");
+    return response;
+}
+
+string deploy(string &member_name, string &username, string &permission, string &message) {
+    printf("The main server has received a remove request from member %s TCP over port %d.\n", username.c_str(),
+           MAIN_SERVER_TCP_PORT);
+    printf("The main server has sent the lookup request to server R.\n");
+    string deploy_message = member_name.append(" ").append(permission).append(" ").append("deploy").append(" ").
+            append(member_name);
+    string response = udp_send_request(data->udp_sock_r, &data->serverR_addr, deploy_message);
+    printf("The main server received the lookup response from server R.");
+    if (response.empty() || response == "0") {
+        response = "1";
+    } else {
+        printf("The main server has sent the deploy request to server D.\n");
+        udp_send_request(data->udp_sock_d, &data->serverD_addr, message + " " + response);
+        printf("The user %s’s repository has been deployed at server D.\n", member_name.c_str());
+    }
+    return response;
+}
+
+string lookup(string &member_name, string &username, string &permission, string &message) {
+    if (permission == "1") {
+        printf(
+            "The main server has received a lookup request from %s to lookup %s’s repository using TCP over port %d\n",
+            member_name.c_str(),
+            username.c_str(),
+            MAIN_SERVER_TCP_PORT);
+    } else {
+        printf(
+            "The main server has received a lookup request from Guest to lookup %s’s repository using TCP over port %d.\n",
+            username.c_str(),
+            MAIN_SERVER_TCP_PORT);
+    }
+    printf("The main server has sent the lookup request to server R.\n");
+    string response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
+    printf("The main server has received the response from server R using UDP over %d\n", MAIN_SERVER_UDP_PORT);
+    printf("The main server has sent the response to the client.\n");
+    return response;
+}
+
+string push(string &username, string &message) {
+    printf("The main server has received a push request from %s TCP over port %d\n.", username.c_str(),
+           MAIN_SERVER_TCP_PORT);
+    printf("The main server has sent the push request to server R.");
+    string response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
+    printf("The main server has received the response from server R using UDP over %d\n", MAIN_SERVER_UDP_PORT);
+    if (response == "1") {
+        printf(
+            "The main server has received the response from server R using UDP over %d, asking for overwrite confirmation\n",
+            MAIN_SERVER_UDP_PORT);
+        printf("The main server has sent the overwrite confirmation request to the client.\n");
+    } else {
+        printf("The main server has sent the response to the client.");
+    }
+    return response;
+}
+
+string remove(string &username, string &message) {
+    printf("The main server has received a remove request from member %s TCP over port %d.\n", username.c_str(),
+           MAIN_SERVER_TCP_PORT);
+    string response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
+    printf("The main server has received confirmation of the remove request done by the server R.\n");
+    return response;
+}
+
+/* TCP child thread handling client requests */
 void *handle_client(void *arg) {
+    // handle the request from tcp clients
     ThreadData *data = (ThreadData *) arg;
     int client_sock = data->client_sock;
     char buffer[BUFFER_SIZE];
@@ -73,6 +162,7 @@ void *handle_client(void *arg) {
     }
     buffer[bytes_received] = '\0';
     string message = buffer;
+    // parse the message from the client, store the information to corresponding variables using istringstream
     string response;
     string member_name;
     string permission;
@@ -83,78 +173,27 @@ void *handle_client(void *arg) {
     iss >> member_name;
     iss >> permission;
     iss >> prefix;
+    // forward request to other UDP servers based on the action provided in the message
     if (prefix == "lookup") {
         iss >> username;
-        if (permission == "1") {
-            printf(
-                "The main server has received a lookup request from %s to lookup %s’s repository using TCP over port %d\n",
-                member_name.c_str(),
-                username.c_str(),
-                MAIN_SERVER_TCP_PORT);
-        } else {
-            printf(
-                "The main server has received a lookup request from Guest to lookup %s’s repository using TCP over port %d.\n",
-                username.c_str(),
-                MAIN_SERVER_TCP_PORT);
-        }
-        printf("The main server has sent the lookup request to server R.\n");
-        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
-        printf("The main server has received the response from server R using UDP over %d\n", MAIN_SERVER_UDP_PORT);
-        printf("The main server has sent the response to the client.\n");
+        response = lookup(member_name, username, permission, message);
     } else if (prefix == "decision") {
-        printf("The main server has received the overwrite confirmation response from %s using TCP over port %d\n",
-               member_name.c_str(),
-               MAIN_SERVER_TCP_PORT);
-        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
-        printf("The main server has sent the overwrite confirmation response to server R.");
+        response = decision(member_name, message);
     } else if (prefix == "push") {
         iss >> filename;
         iss >> username;
-        printf("The main server has received a push request from %s TCP over port %d\n.", username.c_str(),
-               MAIN_SERVER_TCP_PORT);
-        printf("The main server has sent the push request to server R.");
-        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
-        printf("The main server has received the response from server R using UDP over %d\n", MAIN_SERVER_UDP_PORT);
-        if (response == "1") {
-            printf(
-                "The main server has received the response from server R using UDP over %d, asking for overwrite confirmation\n",
-                MAIN_SERVER_UDP_PORT);
-            printf("The main server has sent the overwrite confirmation request to the client.\n");
-        } else {
-            printf("The main server has sent the response to the client.");
-        }
+        response = push(username, message);
     } else if (prefix == "remove") {
         iss >> filename;
         iss >> username;
-        printf("The main server has received a remove request from member %s TCP over port %d.\n", username.c_str(),
-               MAIN_SERVER_TCP_PORT);
-        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, message);
-        printf("The main server has received confirmation of the remove request done by the server R.\n");
+        response = remove(username, message);
     } else if (prefix == "deploy") {
-        printf("The main server has received a remove request from member %s TCP over port %d.\n", username.c_str(),
-               MAIN_SERVER_TCP_PORT);
-        printf("The main server has sent the lookup request to server R.\n");
-        string deploy_message = member_name.append(" ").append(permission).append(" ").append("deploy").append(" ").
-                append(member_name);
-        response = udp_send_request(data->udp_sock_r, &data->serverR_addr, deploy_message);
-        printf("The main server received the lookup response from server R.");
-        if (response.empty() || response == "0") {
-            response = "1";
-        } else {
-            printf("The main server has sent the deploy request to server D.\n");
-            udp_send_request(data->udp_sock_d, &data->serverD_addr, message + " " + response);
-            printf("The user %s’s repository has been deployed at server D.\n", member_name.c_str());
-        }
+        response = deploy(member_name, username, permission, message);
     } else {
-        int index = message.find(":");
-        printf("Server M has received username %s and password ****.\n", message.substr(0, index).c_str());
-        printf("Server M has sent authentication request to Server A\n");
-        response = udp_send_request(data->udp_sock_a, &data->serverA_addr, message);
-        printf("The main server has received the response from server A using UDP over %d\n", MAIN_SERVER_UDP_PORT);
-        printf("The main server has sent the response from server A to client using TCP over port %d.\n",
-               MAIN_SERVER_TCP_PORT);
-    }
+        response = authenticate(message);
+    }// sending back the response to the client
     send(client_sock, response.c_str(), response.size(), 0);
+    // close client socket after the request has been fulfilled
     close(client_sock);
     delete data;
     return nullptr;
@@ -164,7 +203,7 @@ void *handle_client(void *arg) {
 int main() {
     printf("Server M is up and running using UDP on port %d.\n", MAIN_SERVER_UDP_PORT);
 
-    // initiate UDP parameters
+    // initiate UDP parameters and setup UDP client
     struct sockaddr_in serverA_addr;
     serverA_addr.sin_family = AF_INET;
     serverA_addr.sin_port = htons(SERVER_A_UDP_PORT);
@@ -181,7 +220,6 @@ int main() {
     const int udp_sock_d = init_udp_socket();
     const int udp_sock_r = init_udp_socket();
 
-
     // setting up socket for the tcp server
     struct sockaddr_in serverM_addr;
     serverM_addr.sin_family = AF_INET;
@@ -193,6 +231,7 @@ int main() {
         return -1;
     }
     while (true) {
+        // define the client socket variable
         struct sockaddr_in tcp_client_addr;
         socklen_t addr_len = sizeof(tcp_client_addr);
         int client_socket = accept(tcp_sock, (struct sockaddr *) &tcp_client_addr, &addr_len);
@@ -200,7 +239,7 @@ int main() {
             cerr << "client accept error";
             continue;
         }
-
+        // create a thread data object and will be used by a child thread running the handle_client function
         ThreadData *data = new ThreadData();
         data->client_sock = client_socket;
         data->serverA_addr = serverA_addr;
