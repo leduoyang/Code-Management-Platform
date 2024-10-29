@@ -14,13 +14,20 @@
 
 using namespace std;
 
-#define LOCALHOST "127.0.0.1"
-#define SERVER_R_UDP_PORT 22910
 #define BUFFER_SIZE 1024
+#define CREDENTIALS "./members.txt"
+#define DEPLOY_PREFIX "deploy"
+#define LOCALHOST "127.0.0.1"
+#define LOOKUP_PREFIX "lookup"
+#define PUSH_PREFIX "push"
+#define REMOVE_PREFIX "remove"
+#define REPOSITORY "./filenames.txt"
+#define SERVER_R_UDP_PORT 22910
 
-set<string> load_username(const string &filename) {
+set<string> load_username() {
+    // load usernames from the members.txt and save them in a string set
     set<string> username_set;
-    ifstream file(filename);
+    ifstream file(CREDENTIALS);
     string line;
     getline(file, line);
     while (getline(file, line)) {
@@ -35,6 +42,7 @@ set<string> load_username(const string &filename) {
 }
 
 string trim(const string &str) {
+    // remove any leading and trailing spaces
     size_t first = str.find_first_not_of(' ');
     if (first == string::npos) return "";
     size_t last = str.find_last_not_of(' ');
@@ -42,6 +50,7 @@ string trim(const string &str) {
 }
 
 string vector_to_string(vector<string> vector) {
+    // concatenate all elements in a vector to a string
     ostringstream oss;
     for (size_t i = 0; i < vector.size(); i++) {
         oss << vector[i] << endl;
@@ -49,9 +58,10 @@ string vector_to_string(vector<string> vector) {
     return oss.str();
 }
 
-unordered_map<string, vector<string> > read_files(const string &filename) {
+unordered_map<string, vector<string> > read_files() {
+    // read the usernames and filenames from filenames.txt and save the information in a map
     unordered_map<string, vector<string> > user_file_map;
-    ifstream file(filename);
+    ifstream file(REPOSITORY);
     string line;
     getline(file, line);
     while (getline(file, line)) {
@@ -66,6 +76,7 @@ unordered_map<string, vector<string> > read_files(const string &filename) {
 }
 
 bool check_if_file_exist(const vector<string> &file_list, string &target) {
+    // check that if a file exists
     for (const string &filename: file_list) {
         if (filename == target) {
             return true; // File found
@@ -74,16 +85,15 @@ bool check_if_file_exist(const vector<string> &file_list, string &target) {
     return false;
 }
 
-void update_repository(vector<string> &target_list, const string &filename, const string &username,
-                       const string &repository, int action) {
+void update_repository(vector<string> &target_list, const string &filename, const string &username, int action) {
     if (action == 1) {
-        // push operation
+        // push operation where filename will be push back to the target_list for the user and the repository will be updated
         target_list.push_back(filename);
-        ofstream file(repository, ios::app);
+        ofstream file(REPOSITORY, ios::app);
         file << username << " " << filename << std::endl;
         file.close();
     } else if (action == 0) {
-        // remove operation
+        // remove operation where the filename in the target_list will be erased
         for (auto it = target_list.begin(); it != target_list.end();) {
             if (*it == filename) {
                 it = target_list.erase(it);
@@ -91,12 +101,14 @@ void update_repository(vector<string> &target_list, const string &filename, cons
                 it += 1;
             }
         }
-        ifstream file(repository);
+        // read the repository again to store the information into vector lines
+        ifstream file(REPOSITORY);
         vector<string> lines;
         string line;
         if (getline(file, line)) {
             lines.push_back(line);
         }
+        // adding back the data except for one that is being removed
         while (getline(file, line)) {
             istringstream iss(line);
             string curr_username;
@@ -108,7 +120,8 @@ void update_repository(vector<string> &target_list, const string &filename, cons
             }
         }
         file.close();
-        ofstream output_file(repository, ios::trunc);
+        // update the repository based on vector lines, which has removed the target username and filename
+        ofstream output_file(REPOSITORY, ios::trunc);
         for (const string &output_line: lines) {
             output_file << output_line << endl;
         }
@@ -118,15 +131,10 @@ void update_repository(vector<string> &target_list, const string &filename, cons
 
 int main() {
     string FILENAME;
-    const string LOOKUP_PREFIX = "lookup";
-    const string PUSH_PREFIX = "push";
-    const string REMOVE_PREFIX = "remove";
-    const string DEPLOY_PREFIX = "deploy";
-    const string REPOSITORY = "./filenames.txt";
-    const string CREDENTIALS = "./members.txt";
     printf("Server R is up and running using UDP on port %d.\n", SERVER_R_UDP_PORT);
-    unordered_map<string, vector<string> > user_file_map = read_files(REPOSITORY);
+    unordered_map<string, vector<string> > user_file_map = read_files();
 
+    // define and setup UDP server
     int udp_sock;
     if ((udp_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         return -1;
@@ -135,14 +143,15 @@ int main() {
     serverR_addr.sin_family = AF_INET;
     serverR_addr.sin_port = htons(SERVER_R_UDP_PORT);
     serverR_addr.sin_addr.s_addr = inet_addr(LOCALHOST);;
-
     if (::bind(udp_sock, (struct sockaddr *) &serverR_addr, sizeof(serverR_addr)) < 0) {
         return -1;
     }
 
+    // define the client socket variable
     struct sockaddr_in client_addr;
     socklen_t addr_len = sizeof(client_addr);
     while (true) {
+        // read request from the client
         char buffer[BUFFER_SIZE];
         int bytes_received = recvfrom(udp_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &client_addr, &addr_len);
         if (bytes_received < 0) {
@@ -168,7 +177,7 @@ int main() {
                 printf("Server R has received a deploy request from the main server.\n");
             }
             if (!username.empty()) {
-                set<string> username_set = load_username(CREDENTIALS);
+                set<string> username_set = load_username();
                 if (username_set.find(username) == username_set.end()) {
                     response = "-1";
                 } else {
@@ -191,7 +200,7 @@ int main() {
                 printf("Server R has received a push request from the main server.\n");
                 vector<string> &target_list = user_file_map[username];
                 if (target_list.empty() || !check_if_file_exist(target_list, filename)) {
-                    update_repository(target_list, filename, username, REPOSITORY, 1);
+                    update_repository(target_list, filename, username, 1);
                     response = "0";
                 } else {
                     printf("%s exists in %s's repository; requesting overwrite confirmation.\n", filename.c_str(),
@@ -203,7 +212,7 @@ int main() {
                 printf("Server R has received a remove request from the main server.\n");
                 vector<string> &target_list = user_file_map[username];
                 if (!target_list.empty() || check_if_file_exist(target_list, filename)) {
-                    update_repository(target_list, filename, username, REPOSITORY, 0);
+                    update_repository(target_list, filename, username, 0);
                     response = "0";
                 } else {
                     response = "1";
@@ -211,8 +220,10 @@ int main() {
             }
         }
 
+        // send back the response to the client
         sendto(udp_sock, response.c_str(), response.size(), 0, (struct sockaddr *) &client_addr, addr_len);
 
+        // print the logs based on the action and response
         if (prefix == LOOKUP_PREFIX) {
             printf("Server R has finished sending the response to the main server.\n");
         }
@@ -220,6 +231,7 @@ int main() {
             printf("Server R has finished sending the response to the main server.\n");
         }else if (prefix == PUSH_PREFIX) {
             if (response == "1") {
+                // handle the decision made by the user
                 bytes_received = recvfrom(udp_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &client_addr,
                                           &addr_len);
                 buffer[bytes_received] = '\0';
