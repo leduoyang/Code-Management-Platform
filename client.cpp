@@ -14,6 +14,7 @@ using namespace std;
 #define DECISION_PREFIX "decision"
 #define DEPLOY_PREFIX "deploy"
 #define LOCALHOST "127.0.0.1"
+#define LOG_PREFIX "log"
 #define LOOKUP_PREFIX "lookup"
 #define MAIN_SERVER_TCP_PORT 25910
 #define PUSH_PREFIX "push"
@@ -94,7 +95,7 @@ int main(int argc, char *argv[]) {
     string credentials = username + ":" + encrypted_password;
     // initiate a TCP client and send the credentials for authentication
     string permission = authenticate(credentials);
-    if(permission == "-1") {
+    if (permission == "-1") {
         return 0;
     }
     // set up the meta_data, which will be combined to the requests
@@ -129,6 +130,9 @@ int main(int argc, char *argv[]) {
             }
             if (action == DEPLOY_PREFIX) {
                 printf("%s sent a lookup request to the main server.\n", username.c_str());
+            }
+            if (action == LOG_PREFIX) {
+                printf("%s sent a log request to the main server.\n", username.c_str());
             }
             if ((action == PUSH_PREFIX || action == REMOVE_PREFIX)) {
                 if (param.empty()) {
@@ -190,8 +194,7 @@ int main(int argc, char *argv[]) {
                     send_message(client, command);
                 } else if (response == "0") {
                     printf("%s pushed successfully\n", param.c_str());
-                }
-                else {
+                } else {
                     printf("%s was not pushed successfully.\n", param.c_str());
                 }
             } else if (action == REMOVE_PREFIX) {
@@ -209,6 +212,11 @@ int main(int argc, char *argv[]) {
                         CLIENT_TCP_PORT);
                     cout << response << endl;
                 }
+            } else if (action == LOG_PREFIX) {
+                printf(
+                    "The client received the response from the main server using TCP over port %d.\n",
+                    CLIENT_TCP_PORT);
+                cout << response << endl;
             }
         }
         // process the response for guests

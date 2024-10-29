@@ -8,6 +8,10 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <sstream>
+#include <unordered_map>
+#include <vector>
+#include <fstream>
+#include <filesystem>
 
 using namespace std;
 
@@ -15,6 +19,8 @@ using namespace std;
 #define DECISION_PREFIX "decision"
 #define DEPLOY_PREFIX "deploy"
 #define LOCALHOST "127.0.0.1"
+#define LOG_PREFIX "log"
+#define LOGS "./logs.txt"
 #define LOOKUP_PREFIX "lookup"
 #define MAIN_SERVER_UDP_PORT 24910
 #define MAIN_SERVER_TCP_PORT 25910
@@ -34,6 +40,52 @@ struct ThreadData {
     int udp_sock_d;
     int udp_sock_r;
 };
+
+string vector_to_string(const vector<string> &vector) {
+    // concatenate all elements in a vector to a string
+    ostringstream oss;
+    for (size_t i = 0; i < vector.size(); i++) {
+        oss << vector[i] << endl;
+    }
+    return oss.str();
+}
+
+unordered_map<string, vector<string> > read_logs() {
+    // read the usernames and logs from logs.txt and save the information in a map
+    unordered_map<string, vector<string> > user_log_map;
+    // create the log file if it does not exist
+    if (!std::filesystem::exists(LOGS)) {
+        ofstream file(LOGS);
+        file.close();
+    }
+    ifstream file(LOGS);
+    string line;
+    getline(file, line);
+    while (getline(file, line)) {
+        istringstream iss(line);
+        string username;
+        string log;
+        if (iss >> username) {
+            getline(iss, log);
+            if (!log.empty() && log[0] == ' ') {
+                log.erase(0, 1);
+            }
+            user_log_map[username].push_back(log);
+        }
+    }
+    return user_log_map;
+}
+
+void save_logs(string &log) {
+    // save the logs to the file to make logs persistent
+    if (!std::filesystem::exists(LOGS)) {
+        ofstream file(LOGS);
+        file.close();
+    }
+    ofstream file(LOGS, ios::app);
+    file << log << std::endl;
+    file.close();
+}
 
 /* initiate and handle tcp and udp request */
 int init_udp_socket() {
@@ -153,6 +205,15 @@ string remove(ThreadData *data, string &username, string &message) {
     return response;
 }
 
+string log(string &member_name) {
+    printf("The main server has received a log request from member %s TCP over port %d.", member_name.c_str(),
+           MAIN_SERVER_TCP_PORT);
+    unordered_map<string, vector<string> > user_file_map = read_logs();
+    string response = vector_to_string(user_file_map[member_name]);
+    printf("The main server has sent the log response to the client.");
+    return response;
+}
+
 /* TCP child thread handling client requests */
 void *handle_client(void *arg) {
     // handle the request from tcp clients
@@ -181,22 +242,34 @@ void *handle_client(void *arg) {
     // forward request to other UDP servers based on the action provided in the message
     if (prefix == LOOKUP_PREFIX) {
         iss >> username;
+        string log_info = member_name + " " + LOOKUP_PREFIX + " " + username;
+        save_logs(log_info);
         response = lookup(data, member_name, username, permission, message);
     } else if (prefix == DECISION_PREFIX) {
         response = decision(data, member_name, message);
     } else if (prefix == PUSH_PREFIX) {
         iss >> filename;
         iss >> username;
+        string log_info = member_name + " " + PUSH_PREFIX + " " + filename;
+        save_logs(log_info);
         response = push(data, username, message);
     } else if (prefix == REMOVE_PREFIX) {
         iss >> filename;
         iss >> username;
+        string log_info = member_name + " " + REMOVE_PREFIX + " " + filename;
+        save_logs(log_info);
         response = remove(data, username, message);
     } else if (prefix == DEPLOY_PREFIX) {
+        string log_info = member_name + " " + DEPLOY_PREFIX;
+        save_logs(log_info);
         response = deploy(data, member_name, username, permission, message);
+    } else if (prefix == LOG_PREFIX) {
+        string log_info = member_name + " " + LOG_PREFIX;
+        save_logs(log_info);
+        response = log(member_name);
     } else {
         response = authenticate(data, message);
-    }// sending back the response to the client
+    } // sending back the response to the client
     send(client_sock, response.c_str(), response.size(), 0);
     // close client socket after the request has been fulfilled
     close(client_sock);
